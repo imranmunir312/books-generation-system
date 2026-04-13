@@ -160,55 +160,64 @@ def refresh_previews() -> tuple[str, str, str, str]:
     return outline_preview, chapter_preview, summary_preview, final_preview
 
 
-def dashboard_outputs() -> tuple[str, str, str, str, str, str]:
-    outline_preview, chapter_preview, summary_preview, final_preview = refresh_previews()
-
-    return (
-        refresh_status(),
-        next_step_hint(),
-        outline_preview,
-        chapter_preview,
-        summary_preview,
-        final_preview,
-    )
+def status_outputs() -> tuple[str, str]:
+    return refresh_status(), next_step_hint()
 
 
-def refresh_dashboard() -> tuple[str, str, str, str, str, str]:
-    return dashboard_outputs()
+def outline_outputs() -> tuple[str, str, str]:
+    outline_preview, _, _, _ = refresh_previews()
+
+    return refresh_status(), next_step_hint(), outline_preview
 
 
-def import_excel_input(excel_file) -> tuple[str, str, str, str, str, str, str]:
+def chapter_outputs() -> tuple[str, str, str, str]:
+    _, chapter_preview, summary_preview, _ = refresh_previews()
+
+    return refresh_status(), next_step_hint(), chapter_preview, summary_preview
+
+
+def final_outputs() -> tuple[str, str, str]:
+    _, _, _, final_preview = refresh_previews()
+
+    return refresh_status(), next_step_hint(), final_preview
+
+
+def refresh_dashboard() -> tuple[str, str]:
+    return status_outputs()
+
+
+def import_excel_input(excel_file) -> tuple[str, str, str]:
     if excel_file is None:
         return (
             "Please upload a local Excel .xlsx file.",
-            *dashboard_outputs(),
+            *status_outputs(),
         )
 
     file_path = getattr(excel_file, "name", None) or str(excel_file)
     output = capture_output(lambda: import_books_from_excel(file_path))
 
-    return output, *dashboard_outputs()
+    return output, *status_outputs()
 
 
-def run_generate_outline() -> tuple[str, str, str, str, str, str, str]:
+def run_generate_outline() -> tuple[str, str, str, str]:
     output = capture_output(generate_outline_for_latest_book)
 
-    return output, *dashboard_outputs()
+    return output, *outline_outputs()
 
 
-def approve_outline() -> tuple[str, str, str, str, str, str, str]:
+def approve_outline() -> tuple[str, str, str, str]:
     session = get_session()
 
     try:
         book = get_latest_book(session)
 
         if book is None:
-            return "No book found.", *dashboard_outputs()
+            return "No book found.", *outline_outputs()
 
         if get_latest_outline(session, book.id) is None:
             return (
                 "No outline found. Generate an outline first.",
-                *dashboard_outputs(),
+                *outline_outputs(),
             )
 
         book.status_outline_notes = "no_notes_needed"
@@ -216,38 +225,38 @@ def approve_outline() -> tuple[str, str, str, str, str, str, str]:
 
         return (
             "Outline approved. You can now generate chapters.",
-            *dashboard_outputs(),
+            *outline_outputs(),
         )
 
     except Exception as error:
         session.rollback()
-        return f"Error: {error}", *dashboard_outputs()
+        return f"Error: {error}", *outline_outputs()
 
     finally:
         session.close()
 
 
-def request_outline_changes(notes: str) -> tuple[str, str, str, str, str, str, str]:
+def request_outline_changes(notes: str) -> tuple[str, str, str, str]:
     session = get_session()
 
     try:
         book = get_latest_book(session)
 
         if book is None:
-            return "No book found.", *dashboard_outputs()
+            return "No book found.", *outline_outputs()
 
         outline = get_latest_outline(session, book.id)
 
         if outline is None:
             return (
                 "No outline found. Generate an outline first.",
-                *dashboard_outputs(),
+                *outline_outputs(),
             )
 
         if not notes.strip():
             return (
                 "Add outline change notes first.",
-                *dashboard_outputs(),
+                *outline_outputs(),
             )
 
         book.status_outline_notes = "yes"
@@ -256,74 +265,74 @@ def request_outline_changes(notes: str) -> tuple[str, str, str, str, str, str, s
 
         output = capture_output(generate_outline_for_latest_book)
 
-        return output, *dashboard_outputs()
+        return output, *outline_outputs()
 
     except Exception as error:
         session.rollback()
-        return f"Error: {error}", *dashboard_outputs()
+        return f"Error: {error}", *outline_outputs()
 
     finally:
         session.close()
 
 
-def run_generate_chapter() -> tuple[str, str, str, str, str, str, str]:
+def run_generate_chapter() -> tuple[str, str, str, str, str]:
     output = capture_output(generate_next_chapter_for_latest_book)
 
-    return output, *dashboard_outputs()
+    return output, *chapter_outputs()
 
 
-def approve_chapter() -> tuple[str, str, str, str, str, str, str]:
+def approve_chapter() -> tuple[str, str, str, str, str]:
     session = get_session()
 
     try:
         book = get_latest_book(session)
 
         if book is None:
-            return "No book found.", *dashboard_outputs()
+            return "No book found.", *chapter_outputs()
 
         chapter = get_latest_chapter(session, book.id)
 
         if chapter is None:
             return (
                 "No chapter found. Generate a chapter first.",
-                *dashboard_outputs(),
+                *chapter_outputs(),
             )
 
         chapter.chapter_notes_status = "no_notes_needed"
         chapter.chapter_notes = None
         session.commit()
 
-        return "Latest chapter approved.", *dashboard_outputs()
+        return "Latest chapter approved.", *chapter_outputs()
 
     except Exception as error:
         session.rollback()
-        return f"Error: {error}", *dashboard_outputs()
+        return f"Error: {error}", *chapter_outputs()
 
     finally:
         session.close()
 
 
-def request_chapter_changes(notes: str) -> tuple[str, str, str, str, str, str, str]:
+def request_chapter_changes(notes: str) -> tuple[str, str, str, str, str]:
     session = get_session()
 
     try:
         book = get_latest_book(session)
 
         if book is None:
-            return "No book found.", *dashboard_outputs()
+            return "No book found.", *chapter_outputs()
 
         chapter = get_latest_chapter(session, book.id)
 
         if chapter is None:
             return (
                 "No chapter found. Generate a chapter first.",
-                *dashboard_outputs(),
+                *chapter_outputs(),
             )
 
         if not notes.strip():
             return (
                 "Add chapter change notes first.",
-                *dashboard_outputs(),
+                *chapter_outputs(),
             )
 
         chapter.chapter_notes_status = "yes"
@@ -332,46 +341,46 @@ def request_chapter_changes(notes: str) -> tuple[str, str, str, str, str, str, s
 
         return (
             "Chapter change request saved. Click regenerate next.",
-            *dashboard_outputs(),
+            *chapter_outputs(),
         )
 
     except Exception as error:
         session.rollback()
-        return f"Error: {error}", *dashboard_outputs()
+        return f"Error: {error}", *chapter_outputs()
 
     finally:
         session.close()
 
 
-def run_regenerate_chapter() -> tuple[str, str, str, str, str, str, str]:
+def run_regenerate_chapter() -> tuple[str, str, str, str, str]:
     output = capture_output(regenerate_latest_chapter_for_latest_book)
 
-    return output, *dashboard_outputs()
+    return output, *chapter_outputs()
 
 
-def approve_final_review() -> tuple[str, str, str, str, str, str, str]:
+def approve_final_review() -> tuple[str, str, str, str]:
     session = get_session()
 
     try:
         book = get_latest_book(session)
 
         if book is None:
-            return "No book found.", *dashboard_outputs()
+            return "No book found.", *final_outputs()
 
         book.final_review_notes_status = "no_notes_needed"
         session.commit()
 
-        return "Final review approved.", *dashboard_outputs()
+        return "Final review approved.", *final_outputs()
 
     except Exception as error:
         session.rollback()
-        return f"Error: {error}", *dashboard_outputs()
+        return f"Error: {error}", *final_outputs()
 
     finally:
         session.close()
 
 
-def run_compile_book() -> tuple[str, str, str, str, str, str, str, str | None]:
+def run_compile_book() -> tuple[str, str, str, str, str | None]:
     output = capture_output(compile_latest_book)
     file_path = None
 
@@ -389,7 +398,7 @@ def run_compile_book() -> tuple[str, str, str, str, str, str, str, str | None]:
     finally:
         session.close()
 
-    return output, *dashboard_outputs(), file_path
+    return output, *final_outputs(), file_path
 
 
 def build_ui() -> gr.Blocks:
@@ -418,43 +427,8 @@ def build_ui() -> gr.Blocks:
             )
 
         action_output = gr.Textbox(label="Last Action Result", lines=8)
-        with gr.Accordion("Generated Content Preview", open=True):
-            outline_preview_box = gr.Textbox(
-                label="Latest Generated Outline",
-                value=refresh_previews()[0],
-                lines=12,
-                interactive=False,
-            )
-            chapter_preview_box = gr.Textbox(
-                label="Latest Generated Chapter",
-                value=refresh_previews()[1],
-                lines=16,
-                interactive=False,
-            )
-            chapter_summary_box = gr.Textbox(
-                label="Latest Chapter Summary Used As Context",
-                value=refresh_previews()[2],
-                lines=5,
-                interactive=False,
-            )
-            final_preview_box = gr.Textbox(
-                label="Compiled Draft Preview",
-                value=refresh_previews()[3],
-                lines=16,
-                interactive=False,
-            )
-
-        dashboard_targets = [
-            status_box,
-            next_box,
-            outline_preview_box,
-            chapter_preview_box,
-            chapter_summary_box,
-            final_preview_box,
-        ]
-        action_targets = [action_output, *dashboard_targets]
         refresh_button = gr.Button("Refresh")
-        refresh_button.click(refresh_dashboard, outputs=dashboard_targets)
+        refresh_button.click(refresh_dashboard, outputs=[status_box, next_box])
 
         gr.Markdown("## Step 1: Import Book Input")
         gr.Markdown(
@@ -465,7 +439,7 @@ def build_ui() -> gr.Blocks:
         import_button.click(
             import_excel_input,
             inputs=excel_input,
-            outputs=action_targets,
+            outputs=[action_output, status_box, next_box],
         )
 
         gr.Markdown("## Step 2: Generate And Review Outline")
@@ -476,19 +450,31 @@ def build_ui() -> gr.Blocks:
             label="Outline change notes, only if you want regeneration",
             lines=3,
         )
+        outline_preview_box = gr.Textbox(
+            label="Latest Generated Outline",
+            value=refresh_previews()[0],
+            lines=12,
+            interactive=False,
+        )
         request_outline_button = gr.Button("Request Outline Changes And Regenerate")
+        outline_targets = [
+            action_output,
+            status_box,
+            next_box,
+            outline_preview_box,
+        ]
         generate_outline_button.click(
             run_generate_outline,
-            outputs=action_targets,
+            outputs=outline_targets,
         )
         approve_outline_button.click(
             approve_outline,
-            outputs=action_targets,
+            outputs=outline_targets,
         )
         request_outline_button.click(
             request_outline_changes,
             inputs=outline_change_notes,
-            outputs=action_targets,
+            outputs=outline_targets,
         )
 
         gr.Markdown("## Step 3: Generate And Review Chapters")
@@ -499,25 +485,44 @@ def build_ui() -> gr.Blocks:
             label="Chapter change notes, only if you want regeneration",
             lines=3,
         )
+        chapter_preview_box = gr.Textbox(
+            label="Latest Generated Chapter",
+            value=refresh_previews()[1],
+            lines=16,
+            interactive=False,
+        )
+        chapter_summary_box = gr.Textbox(
+            label="Latest Chapter Summary Used As Context",
+            value=refresh_previews()[2],
+            lines=5,
+            interactive=False,
+        )
         with gr.Row():
             request_chapter_button = gr.Button("Request Chapter Changes")
             regenerate_chapter_button = gr.Button("Regenerate Latest Chapter")
+        chapter_targets = [
+            action_output,
+            status_box,
+            next_box,
+            chapter_preview_box,
+            chapter_summary_box,
+        ]
         generate_chapter_button.click(
             run_generate_chapter,
-            outputs=action_targets,
+            outputs=chapter_targets,
         )
         approve_chapter_button.click(
             approve_chapter,
-            outputs=action_targets,
+            outputs=chapter_targets,
         )
         request_chapter_button.click(
             request_chapter_changes,
             inputs=chapter_change_notes,
-            outputs=action_targets,
+            outputs=chapter_targets,
         )
         regenerate_chapter_button.click(
             run_regenerate_chapter,
-            outputs=action_targets,
+            outputs=chapter_targets,
         )
 
         gr.Markdown("## Step 4: Final Review And Compile")
@@ -527,14 +532,26 @@ def build_ui() -> gr.Blocks:
         gr.Markdown(
             "After compilation, use the file link below to download the `.txt` draft."
         )
+        final_preview_box = gr.Textbox(
+            label="Compiled Draft Preview",
+            value=refresh_previews()[3],
+            lines=16,
+            interactive=False,
+        )
         final_file = gr.File(label="Compiled Draft")
+        final_targets = [
+            action_output,
+            status_box,
+            next_box,
+            final_preview_box,
+        ]
         approve_final_button.click(
             approve_final_review,
-            outputs=action_targets,
+            outputs=final_targets,
         )
         compile_button.click(
             run_compile_book,
-            outputs=[*action_targets, final_file],
+            outputs=[*final_targets, final_file],
         )
 
     return app

@@ -158,6 +158,14 @@ Set this in `.env` to enable SMTP:
 EMAIL_NOTIFICATIONS_ENABLED=true
 ```
 
+Test SMTP directly:
+
+```bash
+uv run python -m src.check_email
+```
+
+If you use `sandbox.smtp.mailtrap.io`, messages are captured in the Mailtrap sandbox inbox. They are not delivered to the real recipient inbox.
+
 Notifications are sent for key events:
 
 - Book input imported
