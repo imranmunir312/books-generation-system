@@ -164,6 +164,19 @@ def status_outputs() -> tuple[str, str]:
     return refresh_status(), next_step_hint()
 
 
+def all_section_outputs() -> tuple[str, str, str, str, str, str]:
+    outline_preview, chapter_preview, summary_preview, final_preview = refresh_previews()
+
+    return (
+        refresh_status(),
+        next_step_hint(),
+        outline_preview,
+        chapter_preview,
+        summary_preview,
+        final_preview,
+    )
+
+
 def outline_outputs() -> tuple[str, str, str]:
     outline_preview, _, _, _ = refresh_previews()
 
@@ -182,21 +195,21 @@ def final_outputs() -> tuple[str, str, str]:
     return refresh_status(), next_step_hint(), final_preview
 
 
-def refresh_dashboard() -> tuple[str, str]:
-    return status_outputs()
+def refresh_dashboard() -> tuple[str, str, str, str, str, str]:
+    return all_section_outputs()
 
 
-def import_excel_input(excel_file) -> tuple[str, str, str]:
+def import_excel_input(excel_file) -> tuple[str, str, str, str, str, str, str]:
     if excel_file is None:
         return (
             "Please upload a local Excel .xlsx file.",
-            *status_outputs(),
+            *all_section_outputs(),
         )
 
     file_path = getattr(excel_file, "name", None) or str(excel_file)
     output = capture_output(lambda: import_books_from_excel(file_path))
 
-    return output, *status_outputs()
+    return output, *all_section_outputs()
 
 
 def run_generate_outline() -> tuple[str, str, str, str]:
@@ -428,7 +441,6 @@ def build_ui() -> gr.Blocks:
 
         action_output = gr.Textbox(label="Last Action Result", lines=8)
         refresh_button = gr.Button("Refresh")
-        refresh_button.click(refresh_dashboard, outputs=[status_box, next_box])
 
         gr.Markdown("## Step 1: Import Book Input")
         gr.Markdown(
@@ -436,11 +448,6 @@ def build_ui() -> gr.Blocks:
         )
         excel_input = gr.File(label="Local Excel file", file_types=[".xlsx"])
         import_button = gr.Button("1. Import Excel")
-        import_button.click(
-            import_excel_input,
-            inputs=excel_input,
-            outputs=[action_output, status_box, next_box],
-        )
 
         gr.Markdown("## Step 2: Generate And Review Outline")
         with gr.Row():
@@ -545,6 +552,24 @@ def build_ui() -> gr.Blocks:
             next_box,
             final_preview_box,
         ]
+        dashboard_targets = [
+            status_box,
+            next_box,
+            outline_preview_box,
+            chapter_preview_box,
+            chapter_summary_box,
+            final_preview_box,
+        ]
+        import_targets = [
+            action_output,
+            *dashboard_targets,
+        ]
+        refresh_button.click(refresh_dashboard, outputs=dashboard_targets)
+        import_button.click(
+            import_excel_input,
+            inputs=excel_input,
+            outputs=import_targets,
+        )
         approve_final_button.click(
             approve_final_review,
             outputs=final_targets,
